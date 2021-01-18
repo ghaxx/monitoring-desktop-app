@@ -1,34 +1,22 @@
 package ghx;
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
+import javafx.application.Platform;
 import javafx.concurrent.ScheduledService;
 import javafx.concurrent.Task;
 import javafx.event.ActionEvent;
-import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.util.Duration;
-import nu.pattern.OpenCV;
-import org.opencv.core.Mat;
-import org.opencv.core.MatOfByte;
-import org.opencv.imgcodecs.Imgcodecs;
-import org.opencv.videoio.VideoCapture;
 
-public class PrimaryController {
+public class PrimaryController implements MotionDetector.Listener {
 
-    private static VideoCapture videoCapture;
+    @FXML
+    ImageView image;
+
+    private OpenCvCamera openCvCamera;
 
     public PrimaryController() {
-        if (videoCapture == null) {
-            OpenCV.loadLocally();
-            videoCapture = new VideoCapture();
-            videoCapture.open(0);
-        }
 //        Timeline fiveSecondsWonder = new Timeline(
 //                new KeyFrame(Duration.millis(1000.0 / 5),
 //                        new EventHandler<ActionEvent>() {
@@ -40,35 +28,39 @@ public class PrimaryController {
 //                        }));
 //        fiveSecondsWonder.setCycleCount(Timeline.INDEFINITE);
 //        fiveSecondsWonder.play();
+    }
 
+    public void startShowingLiveImage() {
         ScheduledService<Void> svc = new ScheduledService<Void>() {
             protected Task<Void> createTask() {
                 return new Task<Void>() {
                     protected Void call() {
-                        showImg();
+                        try {
+                            image.setImage(new Image(openCvCamera.getBitmapBytes()));
+                        } catch (Throwable t) {
+                            t.printStackTrace();
+                        }
                         return null;
                     }
                 };
             }
         };
-        svc.setPeriod(Duration.millis(1000.0/30));
+        svc.setPeriod(Duration.millis(1000.0 / 25));
         svc.start();
     }
 
-    @FXML
-    private void switchToSecondary() throws IOException {
-        App.setRoot("secondary");
+    public void setOpenCvCamera(OpenCvCamera openCvCamera) {
+        this.openCvCamera = openCvCamera;
+        image.setFitWidth(this.openCvCamera.getImageWidth());
+        image.setFitHeight(this.openCvCamera.getImageHeight());
     }
 
-    @FXML
-    ImageView image;
+    public OpenCvCamera getOpenCvCamera() {
+        return openCvCamera;
+    }
 
+    @Override
+    public void onMotionDetection() {
 
-    void showImg() {
-        Mat m = new Mat();
-        videoCapture.read(m);
-        MatOfByte byteMat = new MatOfByte();
-        Imgcodecs.imencode(".bmp", m, byteMat);
-        image.setImage(new Image(new ByteArrayInputStream(byteMat.toArray())));
     }
 }
